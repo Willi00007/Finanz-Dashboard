@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mein Finanz-Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE9;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text: #1A1917;
+    --text2: #6B6860;
+    --text3: #9E9C96;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --red: #C0392B;
+    --red-light: #FCEBEB;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  html, body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+  header p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; }
+  .reset-btn {
+    font-size: 11px; color: var(--text3); background: none; border: 1px solid var(--border2);
+    border-radius: 20px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+  }
+  .reset-btn:hover { color: var(--red); border-color: var(--red); }
+
+  /* ── LAYOUT ── */
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 520px; margin: 0 auto; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 10px;
+  }
+
+  /* ── HERO CARD ── */
+  .hero-card { background: var(--text); color: #fff; border-color: transparent; }
+  .hero-card .card-label { color: rgba(255,255,255,0.45); }
+  .hero-amount { font-size: 36px; font-weight: 300; letter-spacing: -0.04em; font-family: 'DM Mono', monospace; margin: 2px 0 4px; }
+  .hero-change { font-size: 12px; opacity: 0.7; }
+  .hero-change.up { color: #5DCAA5; opacity: 1; }
+  .hero-change.down { color: #F09595; opacity: 1; }
+
+  /* ── SECTION HEADER ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-header .card-label { margin-bottom: 0; }
+  .add-btn {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 500; color: var(--blue);
+    background: var(--blue-light); border: none; border-radius: 20px;
+    padding: 4px 10px; cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .add-btn:hover { opacity: 0.8; }
+
+  /* ── PIE ROW ── */
+  .pie-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pie-wrap { display: flex; flex-direction: column; align-items: center; position: relative; }
+  .pie-wrap canvas { max-width: 110px; max-height: 110px; }
+  .pie-total {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace;
+    color: var(--text); text-align: center; pointer-events: none; line-height: 1.2;
+  }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; width: 100%; }
+  .legend-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px; font-size: 11px;
+  }
+  .legend-left { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { color: var(--text2); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-val { color: var(--text); font-weight: 500; font-family: 'DM Mono', monospace; font-size: 10px; }
+  .legend-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 2px 4px;
+    font-size: 12px; color: var(--text3); border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .icon-btn:hover { background: var(--surface2); }
+  .icon-btn.del:hover { color: var(--red); }
+
+  /* ── PORTFOLIO CHART ── */
+  .chart-wrap { position: relative; width: 100%; height: 190px; }
+
+  /* ── MONTH NAV ── */
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 6px 10px; margin-bottom: 10px;
+  }
+  .month-nav button {
+    background: none; border: none; cursor: pointer; font-size: 16px;
+    color: var(--text2); padding: 0 6px; line-height: 1;
+  }
+  .month-nav span { font-size: 13px; font-weight: 500; }
+
+  /* ── STOCK TABLE ── */
+  .stock-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .stock-table th {
+    text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text3); padding: 0 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .stock-table td { padding: 9px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .stock-table tr:last-child td { border-bottom: none; }
+  .stock-name { font-weight: 500; font-size: 12px; }
+  .stock-val { font-family: 'DM Mono', monospace; font-size: 11px; }
+  .stock-chg { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; }
+  .up-text { color: var(--green); }
+  .down-text { color: var(--red); }
+  .chip {
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+    letter-spacing: 0.03em;
+  }
+  .chip-etf { background: var(--blue-light); color: var(--blue); }
+  .chip-stock { background: var(--green-light); color: #085041; }
+  .chip-etp { background: var(--amber-light); color: var(--amber); }
+  .chip-other { background: var(--surface2); color: var(--text2); }
+  .empty-row { text-align: center; padding: 20px; color: var(--text3); font-size: 13px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 200;
+    align-items: flex-end; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 20px 20px 36px; width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: var(--shadow-md);
+    animation: slideUp 0.22s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  .form-group { margin-bottom: 13px; }
+  .form-group label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 5px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--blue); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-cancel {
+    flex: 1; padding: 12px; font-size: 14px; font-weight: 500; font-family: inherit;
+    background: var(--surface2); border: none; border-radius: var(--radius-sm);
+    color: var(--text2); cursor: pointer;
+  }
+  .btn-save {
+    flex: 2; padding: 12px; font-size: 14px; font-weight: 600; font-family: inherit;
+    background: var(--text); border: none; border-radius: var(--radius-sm);
+    color: #fff; cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-save:hover { opacity: 0.85; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff; padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.3s; z-index: 300;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <h1>Mein Finanz-Dashboard</h1>
+      <p id="lastUpdated">–</p>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">Zurücksetzen</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <div class="card hero-card">
+    <div class="card-label">Gesamtvermögen</div>
+    <div class="hero-amount" id="heroAmount">€ 0</div>
+    <div class="hero-change" id="heroChange">–</div>
+  </div>
+
+  <!-- KONTEN -->
+  <div class="card">
+    <div class="section-header">
+      <div class="card-label">Übersicht aller Konten</div>
+      <button class="add-btn" onclick="openModal('account', null)">+ Konto</button>
+    </div>
+    <div class="pie-wrap" style="margin-bottom:10px;">
+      <canvas id="accountChart" role="img" aria-label="Kontenübersicht Kreisdiagramm">Kontenverteilung</canvas>
+      <div class="pie-total" id="accountTotal"></div>
+    </div>
+    <div class="legend" id="accountLegend"></div>
+  </div>
+
+  <!-- AUSGABEN + EINNAHMEN -->
+  <div class="pie-row">
+    <div class="card" style="padding:14px;">
+      <div class="section-header">
+        <div class="card-label">Ausgaben</div>
+        <button class="add-btn" style="padding:3px 8px;font-size:11px;" onclick="openModal('expense', null)">+</button>
+      </div>
+      <div class="pie-wrap">
+        <canvas id="expenseChart" role="img" aria-label="Ausgaben Kreisdiagramm">Ausgaben</canvas>
+        <div class="pie-total" id="expenseTotal"></div>
+      </div>
+      <div class="legend" id="expenseLegend"></div>
+    </div>
+    <div class="card" style="padding:14px;">
+      <div class="section-header">
+        <div class="card-label">Einnahmen</div>
+        <button class="add-btn" style="padding:3px 8px;font-size:11px;" onclick="openModal('income', null)">+</button>
+      </div>
+      <div class="pie-wrap">
+        <canvas id="incomeChart" role="img" aria-label="Einnahmen Kreisdiagramm">Einnahmen</canvas>
+        <div class="pie-total" id="incomeTotal"></div>
+      </div>
+      <div class="legend" id="incomeLegend"></div>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <div class="card">
+    <div class="section-header">
+      <div class="card-label">Kursverlauf Portfolio</div>
+      <button class="add-btn" onclick="openModal('portfolio', null)">+ Eintrag</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="portfolioChart" role="img" aria-label="Portfolio Kursverlauf">Portfolio-Verlauf</canvas>
+    </div>
+  </div>
+
+  <!-- AKTIEN -->
+  <div class="card">
+    <div class="section-header">
+      <div class="card-label">Aktien &amp; ETFs</div>
+      <button class="add-btn" onclick="openModal('stock', null)">+ Position</button>
+    </div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">&#8249;</button>
+      <span id="monthLabel">–</span>
+      <button onclick="changeMonth(1)">&#8250;</button>
+    </div>
+    <table class="stock-table">
+      <thead><tr>
+        <th>Name</th>
+        <th>Wert</th>
+        <th>+/−</th>
+        <th>Art</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="stockBody"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-handle"></div>
+    <h3 id="modalTitle">Eintrag</h3>
+    <div id="modalFields"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveModal()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── COLORS ──
+const COLORS = ['#185FA5','#1D9E75','#D85A30','#BA7517','#D4537E','#639922','#7F77DD','#5DCAA5','#E24B4A','#888780'];
+
+// ── STATE ──
+const DEFAULT_STATE = {
+  accounts: [],
+  expenses: [],
+  incomes: [],
+  portfolio: [],
+  stocks: []
+};
+
+let state = JSON.parse(localStorage.getItem('finanzDash_v2') || 'null') || DEFAULT_STATE;
+let currentMonth = new Date().toISOString().slice(0,7);
+let currentModal = null;
+let editIndex = null;
+
+// Chart instances
+let accountChart, expenseChart, incomeChart, portfolioChart;
+
+// ── UTILS ──
+function save() {
+  state.lastSaved = new Date().toISOString();
+  localStorage.setItem('finanzDash_v2', JSON.stringify(state));
+}
+
+function fmt(v) {
+  return new Intl.NumberFormat('de-DE', {style:'currency', currency:'EUR', maximumFractionDigits:0}).format(v || 0);
+}
+function fmtDec(v) {
+  return new Intl.NumberFormat('de-DE', {style:'currency', currency:'EUR', minimumFractionDigits:2, maximumFractionDigits:2}).format(v || 0);
+}
+function fmtShort(v) {
+  if (Math.abs(v) >= 1000) return (v/1000).toFixed(1).replace('.',',') + 'k';
+  return Math.round(v).toString();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── PIE CHART ──
+function buildPie(canvasId, data, legendId, totalId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const labels = data.map(d => d.name);
+  const values = data.map(d => d.value);
+  const total = values.reduce((a,b) => a+b, 0);
+  const colors = COLORS.slice(0, Math.max(data.length, 1));
+
+  if (window[canvasId + '_inst']) window[canvasId + '_inst'].destroy();
+
+  if (!data.length) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, canvas.width/2 - 4, 0, Math.PI*2);
+    ctx.strokeStyle = '#E8E6E0';
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    document.getElementById(totalId).textContent = '€ 0';
+    document.getElementById(legendId).innerHTML = '<div style="font-size:11px;color:#9E9C96;text-align:center;padding:4px 0;">Noch keine Einträge</div>';
+    return;
+  }
+
+  window[canvasId + '_inst'] = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtDec(ctx.raw)} (${Math.round(ctx.raw/total*100)}%)`
+          }
+        }
+      }
+    }
+  });
+
+  document.getElementById(totalId).innerHTML = `<span style="font-size:9px">${fmt(total)}</span>`;
+
+  // Legend
+  const leg = document.getElementById(legendId);
+  const key = canvasId === 'accountChart' ? 'accounts' : canvasId === 'expenseChart' ? 'expenses' : 'incomes';
+  leg.innerHTML = data.map((d, i) => `
+    <div class="legend-item">
+      <div class="legend-left">
+        <div class="legend-dot" style="background:${colors[i]}"></div>
+        <span class="legend-name" title="${d.name}">${d.name}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="legend-val">${fmt(d.value)}</span>
+        <div class="legend-actions">
+          <button class="icon-btn" onclick="openModal('${key.replace(/s$/,'')}', ${i})" title="Bearbeiten">✎</button>
+          <button class="icon-btn del" onclick="deleteEntry('${key}', ${i})" title="Löschen">×</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── PORTFOLIO CHART ──
+function buildPortfolioChart() {
+  const canvas = document.getElementById('portfolioChart');
+  if (!canvas) return;
+  const pf = [...state.portfolio].sort((a,b) => a.date.localeCompare(b.date));
+
+  if (portfolioChart) portfolioChart.destroy();
+
+  if (!pf.length) {
+    document.getElementById('heroChange').textContent = 'Noch keine Portfolio-Daten';
+    document.getElementById('heroChange').className = 'hero-change';
+    return;
+  }
+
+  const labels = pf.map(p => {
+    const [y,m] = p.date.split('-');
+    const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    return months[parseInt(m)-1] + ' \'' + y.slice(2);
+  });
+  const values = pf.map(p => p.value);
+
+  // Portfolio change indicator
+  if (pf.length >= 2) {
+    const last = pf[pf.length-1].value;
+    const prev = pf[pf.length-2].value;
+    const diff = last - prev;
+    const pct = ((diff/prev)*100).toFixed(1);
+    const el = document.getElementById('heroChange');
+    el.textContent = (diff >= 0 ? '▲ +' : '▼ ') + fmt(diff) + ' (' + (diff>=0?'+':'') + pct + '%) zum Vormonat';
+    el.className = 'hero-change ' + (diff >= 0 ? 'up' : 'down');
+  }
+
+  portfolioChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Portfolio',
+        data: values,
+        borderColor: '#185FA5',
+        backgroundColor: 'rgba(24,95,165,0.06)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#185FA5',
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.38
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + fmtDec(ctx.raw) } }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10, family: 'DM Mono' }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8, color: '#9E9C96' }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { font: { size: 10, family: 'DM Mono' }, callback: v => '€' + fmtShort(v), color: '#9E9C96' }
+        }
+      }
+    }
+  });
+}
+
+// ── STOCK TABLE ──
+function buildStockTable() {
+  const [y,m] = currentMonth.split('-').map(Number);
+  const monthNames = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  document.getElementById('monthLabel').textContent = monthNames[m-1] + ' ' + y;
+
+  const filtered = state.stocks.map((s,i) => ({...s, _i: i})).filter(s => s.month === currentMonth);
+  const tbody = document.getElementById('stockBody');
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Keine Einträge für diesen Monat</td></tr>`;
+    return;
+  }
+
+  const chipClass = {ETF:'chip-etf', Aktie:'chip-stock', ETP:'chip-etp', Sonstiges:'chip-other'};
+  tbody.innerHTML = filtered.map(s => `
+    <tr>
+      <td class="stock-name">${s.name}</td>
+      <td class="stock-val">${fmtDec(s.value)}</td>
+      <td class="stock-chg ${s.change >= 0 ? 'up-text' : 'down-text'}">${s.change >= 0 ? '+' : ''}${parseFloat(s.change).toFixed(1)}%</td>
+      <td><span class="chip ${chipClass[s.type] || 'chip-other'}">${s.type}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="icon-btn" onclick="openModal('stock', ${s._i})" title="Bearbeiten">✎</button>
+        <button class="icon-btn del" onclick="deleteEntry('stocks', ${s._i})" title="Löschen">×</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── TOTAL ──
+function updateTotal() {
+  const total = state.accounts.reduce((a,b) => a + (b.value||0), 0);
+  document.getElementById('heroAmount').textContent = fmt(total);
+  const el = document.getElementById('lastUpdated');
+  if (state.lastSaved) {
+    const d = new Date(state.lastSaved);
+    el.textContent = 'Zuletzt aktualisiert: ' + d.toLocaleDateString('de-DE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  updateTotal();
+  buildPie('accountChart', state.accounts, 'accountLegend', 'accountTotal');
+  buildPie('expenseChart', state.expenses, 'expenseLegend', 'expenseTotal');
+  buildPie('incomeChart', state.incomes, 'incomeLegend', 'incomeTotal');
+  buildPortfolioChart();
+  buildStockTable();
+}
+
+// ── MONTH NAV ──
+function changeMonth(dir) {
+  const [y,m] = currentMonth.split('-').map(Number);
+  let nm = m + dir, ny = y;
+  if (nm > 12) { nm = 1; ny++; }
+  if (nm < 1) { nm = 12; ny--; }
+  currentMonth = ny + '-' + String(nm).padStart(2,'0');
+  buildStockTable();
+}
+
+// ── DELETE ──
+function deleteEntry(key, idx) {
+  if (!confirm('Eintrag wirklich löschen?')) return;
+  state[key].splice(idx, 1);
+  save(); renderAll();
+  showToast('Eintrag gelöscht');
+}
+
+// ── MODAL ──
+const MODAL_CONFIG = {
+  account: {
+    title: (edit) => edit ? 'Konto bearbeiten' : 'Konto hinzufügen',
+    categories: ['Cash','Notgroschen','Investiert','Tagesgeld','Festgeld','Sonstiges'],
+    fields: (d) => `
+      <div class="form-group"><label>Kontoname</label><input type="text" id="f_name" placeholder="z.B. Girokonto ING" value="${d?.name||''}"></div>
+      <div class="form-group"><label>Bank / Institut</label><input type="text" id="f_bank" placeholder="z.B. ING" value="${d?.bank||''}"></div>
+      <div class="form-group"><label>Kontostand (€)</label><input type="number" id="f_value" placeholder="z.B. 3200" step="0.01" value="${d?.value||''}"></div>
+      <div class="form-group"><label>Kategorie</label><select id="f_cat">${['Cash','Notgroschen','Investiert','Tagesgeld','Festgeld','Sonstiges'].map(c=>`<option ${d?.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    `
+  },
+  expense: {
+    title: (edit) => edit ? 'Ausgabe bearbeiten' : 'Ausgabe hinzufügen',
+    fields: (d) => `
+      <div class="form-group"><label>Bezeichnung</label><input type="text" id="f_name" placeholder="z.B. Lebensmittel" value="${d?.name||''}"></div>
+      <div class="form-group"><label>Betrag (€)</label><input type="number" id="f_value" placeholder="z.B. 450" step="0.01" value="${d?.value||''}"></div>
+      <div class="form-group"><label>Kategorie</label><select id="f_cat">${['Lebensmittel','Wohnen','Transport','Freizeit','Versicherung','Gesundheit','Kleidung','Sonstiges'].map(c=>`<option ${d?.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    `
+  },
+  income: {
+    title: (edit) => edit ? 'Einnahme bearbeiten' : 'Einnahme hinzufügen',
+    fields: (d) => `
+      <div class="form-group"><label>Bezeichnung</label><input type="text" id="f_name" placeholder="z.B. Gehalt" value="${d?.name||''}"></div>
+      <div class="form-group"><label>Betrag (€)</label><input type="number" id="f_value" placeholder="z.B. 3200" step="0.01" value="${d?.value||''}"></div>
+      <div class="form-group"><label>Kategorie</label><select id="f_cat">${['Gehalt','Dividenden','Freelance','Mieteinnahmen','Sonstiges'].map(c=>`<option ${d?.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    `
+  },
+  portfolio: {
+    title: (edit) => edit ? 'Portfolio-Eintrag bearbeiten' : 'Portfolio-Eintrag hinzufügen',
+    fields: (d) => `
+      <div class="form-group"><label>Monat</label><input type="month" id="f_date" value="${d?.date || new Date().toISOString().slice(0,7)}"></div>
+      <div class="form-group"><label>Portfolio-Wert (€)</label><input type="number" id="f_value" placeholder="z.B. 14200" step="1" value="${d?.value||''}"></div>
+      <div style="font-size:11px;color:#9E9C96;margin-top:-6px;margin-bottom:10px;">Trage deinen aktuellen Finanzfluss-Portfoliowert ein</div>
+    `
+  },
+  stock: {
+    title: (edit) => edit ? 'Position bearbeiten' : 'Position hinzufügen',
+    fields: (d) => `
+      <div class="form-group"><label>Name</label><input type="text" id="f_name" placeholder="z.B. MSCI World ETF" value="${d?.name||''}"></div>
+      <div class="form-group"><label>Aktueller Wert (€)</label><input type="number" id="f_value" placeholder="z.B. 8200" step="0.01" value="${d?.value||''}"></div>
+      <div class="form-group"><label>Rendite % (z.B. 12.4 oder -3.1)</label><input type="number" id="f_change" placeholder="z.B. 12.4" step="0.01" value="${d?.change ?? ''}"></div>
+      <div class="form-group"><label>Art</label><select id="f_type">${['ETF','Aktie','ETP','Sonstiges'].map(c=>`<option ${d?.type===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Monat</label><input type="month" id="f_month" value="${d?.month || currentMonth}"></div>
+    `
+  }
+};
+
+function openModal(type, idx) {
+  currentModal = type;
+  editIndex = idx;
+  const cfg = MODAL_CONFIG[type];
+  const stateKey = { account:'accounts', expense:'expenses', income:'incomes', portfolio:'portfolio', stock:'stocks' }[type];
+  const existing = idx !== null ? state[stateKey][idx] : null;
+
+  document.getElementById('modalTitle').textContent = cfg.title(idx !== null);
+  document.getElementById('modalFields').innerHTML = cfg.fields(existing);
+  document.getElementById('modalOverlay').classList.add('open');
+
+  setTimeout(() => {
+    const first = document.querySelector('#modalFields input, #modalFields select');
+    if (first) first.focus();
+  }, 100);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  currentModal = null;
+  editIndex = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function g(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function gn(id) { const el = document.getElementById(id); return el ? parseFloat(el.value) : 0; }
+
+function saveModal() {
+  const type = currentModal;
+  const isEdit = editIndex !== null;
+
+  if (type === 'portfolio') {
+    const date = g('f_date'), value = gn('f_value');
+    if (!date || !value) { showToast('Bitte alle Felder ausfüllen'); return; }
+    if (isEdit) {
+      state.portfolio[editIndex] = { date, value };
+    } else {
+      const existing = state.portfolio.findIndex(p => p.date === date);
+      if (existing >= 0) state.portfolio[existing].value = value;
+      else state.portfolio.push({ date, value });
+      state.portfolio.sort((a,b) => a.date.localeCompare(b.date));
+    }
+  } else if (type === 'stock') {
+    const name = g('f_name'), value = gn('f_value'), change = gn('f_change'), stype = g('f_type'), month = g('f_month');
+    if (!name || !value) { showToast('Bitte Name und Wert eingeben'); return; }
+    const entry = { name, value, change, type: stype, month };
+    if (isEdit) state.stocks[editIndex] = entry;
+    else state.stocks.push(entry);
+  } else if (type === 'account') {
+    const name = g('f_name'), bank = g('f_bank'), value = gn('f_value'), category = g('f_cat');
+    if (!name || !value) { showToast('Bitte Name und Betrag eingeben'); return; }
+    const entry = { name, bank, value, category };
+    if (isEdit) state.accounts[editIndex] = entry;
+    else state.accounts.push(entry);
+  } else if (type === 'expense') {
+    const name = g('f_name'), value = gn('f_value'), category = g('f_cat');
+    if (!name || !value) { showToast('Bitte Bezeichnung und Betrag eingeben'); return; }
+    const entry = { name, value, category };
+    if (isEdit) state.expenses[editIndex] = entry;
+    else state.expenses.push(entry);
+  } else if (type === 'income') {
+    const name = g('f_name'), value = gn('f_value'), category = g('f_cat');
+    if (!name || !value) { showToast('Bitte Bezeichnung und Betrag eingeben'); return; }
+    const entry = { name, value, category };
+    if (isEdit) state.incomes[editIndex] = entry;
+    else state.incomes.push(entry);
+  }
+
+  save();
+  closeModal();
+  renderAll();
+  showToast(isEdit ? 'Änderungen gespeichert ✓' : 'Eintrag hinzugefügt ✓');
+}
+
+// ── RESET ──
+function resetAll() {
+  if (!confirm('Alle Daten wirklich löschen? Das kann nicht rückgängig gemacht werden.')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  save(); renderAll();
+  showToast('Alle Daten gelöscht');
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && document.getElementById('modalOverlay').classList.contains('open')) saveModal();
+});
+
+// ── INIT ──
+renderAll();
+</script>
+</body>
+</html>
